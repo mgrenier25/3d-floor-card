@@ -1,0 +1,54 @@
+﻿Imports System.IO
+Imports System.Text
+
+Sub Main()
+    ' Récupération du document actif
+    Dim oDoc As AssemblyDocument = TryCast(ThisApplication.ActiveDocument, AssemblyDocument)
+    If oDoc Is Nothing Then
+        MessageBox.Show("Ce script doit être exécuté dans un assemblage.", "Erreur", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        Exit Sub
+    End If
+
+    Dim oAsm As AssemblyComponentDefinition = oDoc.ComponentDefinition
+    Dim jsonOutput As New StringBuilder()
+
+    ' Début du JSON
+    jsonOutput.AppendLine("{")
+
+    ' Parcours des composants de l'assemblage
+    Dim objectList As New List(Of String)
+
+    For Each oOccurrence As ComponentOccurrence In oAsm.Occurrences
+        If Not oOccurrence.Suppressed Then ' Ignore les objets désactivés
+            objectList.Add(ConvertObjectToJson(oOccurrence))
+        End If
+    Next
+
+    ' Ajout des objets sans virgule finale
+    If objectList.Count > 0 Then
+        jsonOutput.AppendLine(String.Join("," & vbCrLf, objectList))
+    End If
+
+    ' Fermeture du JSON
+    jsonOutput.AppendLine("}")
+
+    ' Définition du chemin du fichier JSON (avec System.IO.Path pour éviter l'ambiguïté)
+    Dim outputPath As String = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(oDoc.FullFileName), "export_home_assistant.json")
+
+    ' Écriture du fichier JSON bien formaté (avec System.IO.File pour éviter l'ambiguïté)
+    System.IO.File.WriteAllText(outputPath, jsonOutput.ToString(), Encoding.UTF8)
+
+    ' Message de confirmation
+    MessageBox.Show("Export JSON terminé : " & outputPath, "Export Home Assistant", MessageBoxButtons.OK, MessageBoxIcon.Information)
+End Sub
+
+Function ConvertObjectToJson(oOccurrence As ComponentOccurrence) As String
+    ' Récupération du nom de l'objet
+    Dim objectName As String = oOccurrence.Name
+
+    ' Construction du JSON pour un objet
+    Dim json As New StringBuilder()
+    json.AppendFormat("  ""{0}"": {{ ""object_id"": ""{0}"" }}", objectName)
+
+    Return json.ToString()
+End Function
